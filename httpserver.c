@@ -9,7 +9,7 @@
 #define NPROCESS 10
 
 int
-serve(int port)
+serve(int port, char *root_path)
 {
   int sock;
   struct sockaddr_in addr;
@@ -72,5 +72,5 @@ main(int argc, char *argv[])
 
   port = atoi(argv[1]);
 
-  serve(port);
+  serve(port, argv[2]);
 }
