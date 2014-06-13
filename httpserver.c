@@ -10,15 +10,31 @@
 #define NPROCESS 10
 
 int
+respond(int clientfd)
+{
+  char buf[256];
+  ssize_t len, off;
+
+  while ((len = read(clientfd, buf, sizeof buf)) != -1) {
+    off = 0;
+    while (len > off) {
+      off += write(clientfd, buf + off, len - off);
+    }
+  }
+
+  return 0;
+}
+
+int
 serve(int port, char *root_path)
 {
-  int server;
+  int serverfd;
   struct sockaddr_in addr;
   size_t addrlen;
   int i;
   pid_t pid;
 
-  server = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+  serverfd = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 
   /* host */
   addr.sin_family = AF_INET;
@@ -26,12 +42,12 @@ serve(int port, char *root_path)
   addr.sin_addr.s_addr = INADDR_ANY;
   addrlen = sizeof(addr);
 
-  if (bind(server, (struct sockaddr *)&addr, addrlen) == -1) {
+  if (bind(serverfd, (struct sockaddr *)&addr, addrlen) == -1) {
     perror("bind");
     return -1;
   }
 
-  if (listen(server, NBACKLOG) == -1) {
+  if (listen(serverfd, NBACKLOG) == -1) {
     perror("listen");
     return -1;
   }
@@ -39,20 +55,15 @@ serve(int port, char *root_path)
   for (i = 0; i < NPROCESS; ++i) {
     if ((pid = fork()) == 0) {
       int client;
-      char buf[256];
-      ssize_t len, off;
 
       while (1) {
-        if ((client = accept(server, NULL, 0)) == -1) {
+        if ((client = accept(serverfd, NULL, 0)) == -1) {
           perror("accept");
           return -1;
         }
 
-        while ((len = read(client, buf, sizeof buf)) != -1) {
-          off = 0;
-          while (len > off) {
-            off += write(client, buf + off, len - off);
-          }
+        if (respond(client) == -1) {
+          fprintf(stderr, "server error");
         }
 
         close(client);
