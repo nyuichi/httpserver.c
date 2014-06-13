@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
+#include <time.h>
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
@@ -9,18 +11,35 @@
 #define NBACKLOG 100
 #define NPROCESS 10
 
-int
-respond(int clientfd)
+void
+getdate(char *buf, size_t len)
 {
-  char buf[256];
-  ssize_t len, off;
+  time_t now;
 
-  while ((len = read(clientfd, buf, sizeof buf)) != -1) {
-    off = 0;
-    while (len > off) {
-      off += write(clientfd, buf + off, len - off);
-    }
-  }
+  now = time(0);
+  strftime(buf, len, "%a, %d %b %Y %H:%M:%S %Z", gmtime(&now));
+}
+
+int
+respond(FILE *fp)
+{
+  char buf[2048];
+
+  puts("starting response");
+
+  do {
+    fgets(buf, sizeof buf, fp);
+    printf("read: %s", buf);
+    printf("%zu\n", strlen(buf));
+  } while (strlen(buf) > 2);
+
+  getdate(buf, sizeof buf);
+
+  fprintf(fp, "HTTP/1.1 501 Not Implemented\t\n");
+  fprintf(fp, "Date: %s\r\n", buf);
+  fprintf(fp, "\r\n");
+
+  puts("finishing response");
 
   return 0;
 }
@@ -54,19 +73,21 @@ serve(int port, char *root_path)
 
   for (i = 0; i < NPROCESS; ++i) {
     if ((pid = fork()) == 0) {
-      int client;
+      int clientfd;
+      FILE *fp;
 
       while (1) {
-        if ((client = accept(serverfd, NULL, 0)) == -1) {
+        if ((clientfd = accept(serverfd, NULL, 0)) == -1) {
           perror("accept");
           return -1;
         }
 
-        if (respond(client) == -1) {
-          fprintf(stderr, "server error");
+        if ((fp = fdopen(clientfd, "r+")) != NULL) {
+          if (respond(fp) == -1) {
+            fprintf(stderr, "server error");
+          }
+          fclose(fp);
         }
-
-        close(client);
       }
       return 0;
     }
