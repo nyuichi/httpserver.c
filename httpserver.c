@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 
@@ -63,6 +64,8 @@ serve(int port, char *root_path)
   for (i = 0; i < NPROCESS; ++i) {
     wait(NULL);
   }
+
+  return 0;
 }
 
 int
@@ -73,4 +76,6 @@ main(int argc, char *argv[])
   port = atoi(argv[1]);
 
   serve(port, argv[2]);
+
+  return 0;
 }
