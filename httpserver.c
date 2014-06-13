@@ -28,12 +28,12 @@ serve(int port, char *root_path)
 
   if (bind(server, (struct sockaddr *)&addr, addrlen) == -1) {
     perror("bind");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   if (listen(server, NBACKLOG) == -1) {
     perror("listen");
-    exit(EXIT_FAILURE);
+    return -1;
   }
 
   for (i = 0; i < NPROCESS; ++i) {
@@ -45,7 +45,7 @@ serve(int port, char *root_path)
       while (1) {
         if ((client = accept(server, NULL, 0)) == -1) {
           perror("accept");
-          exit(EXIT_FAILURE);
+          return -1;
         }
 
         while ((len = read(client, buf, sizeof buf)) != -1) {
@@ -57,7 +57,7 @@ serve(int port, char *root_path)
 
         close(client);
       }
-      exit(0);
+      return 0;
     }
   }
 
