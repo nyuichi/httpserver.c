@@ -25,12 +25,8 @@ respond(FILE *fp)
 {
   char buf[2048];
 
-  puts("starting response");
-
   do {
     fgets(buf, sizeof buf, fp);
-    printf("read: %s", buf);
-    printf("%zu\n", strlen(buf));
   } while (strlen(buf) > 2);
 
   getdate(buf, sizeof buf);
@@ -38,8 +34,6 @@ respond(FILE *fp)
   fprintf(fp, "HTTP/1.1 501 Not Implemented\t\n");
   fprintf(fp, "Date: %s\r\n", buf);
   fprintf(fp, "\r\n");
-
-  puts("finishing response");
 
   return 0;
 }
