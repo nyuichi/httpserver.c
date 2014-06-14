@@ -20,20 +20,75 @@ getdate(char *buf, size_t len)
   strftime(buf, len, "%a, %d %b %Y %H:%M:%S %Z", gmtime(&now));
 }
 
-int
-respond(FILE *fp)
+void
+rGET(FILE *fp, char *path)
 {
   char buf[2048];
+  FILE *file;
+
+  printf("in rGET");
+
+  getdate(buf, sizeof buf);
+
+  fprintf(fp, "HTTP/1.1 200 OK\r\n");
+  fprintf(fp, "Date: %s\r\n", buf);
+  fprintf(fp, "\r\n");
+
+  file = fopen(path, "r");
+
+  fgets(buf, sizeof buf, file);
+  while (! (feof(file) || ferror(file))) {
+    fputs(buf, fp);
+    fgets(buf, sizeof buf, file);
+  }
+
+  fclose(file);
+}
+
+void
+rHEAD(FILE *fp)
+{
+  char date[2048];
+
+  getdate(date, sizeof date);
+
+  fprintf(fp, "HTTP/1.1 200 OK\r\n");
+  fprintf(fp, "Date: %s\r\n", date);
+  fprintf(fp, "\r\n");
+}
+
+void
+r501(FILE *fp)
+{
+  char date[2048];
+
+  getdate(date, sizeof date);
+
+  fprintf(fp, "HTTP/1.1 501 Not Implemented\t\n");
+  fprintf(fp, "Date: %s\r\n", date);
+  fprintf(fp, "\r\n");
+}
+
+int
+respond(FILE *fp, char *root)
+{
+  char method[16], path[128], buf[2048];
+
+  fscanf(fp, "%s %s ", method, path);
 
   do {
     fgets(buf, sizeof buf, fp);
   } while (strlen(buf) > 2);
 
-  getdate(buf, sizeof buf);
-
-  fprintf(fp, "HTTP/1.1 501 Not Implemented\t\n");
-  fprintf(fp, "Date: %s\r\n", buf);
-  fprintf(fp, "\r\n");
+  if (strcmp(method, "GET") == 0) {
+    strcpy(buf, root);
+    strcat(buf, path);
+    rGET(fp, buf);
+  } else if (strcmp(method, "HEAD") == 0) {
+    rHEAD(fp);
+  } else {
+    r501(fp);
+  }
 
   return 0;
 }
@@ -77,7 +132,7 @@ serve(int port, char *root_path)
         }
 
         if ((fp = fdopen(clientfd, "r+")) != NULL) {
-          if (respond(fp) == -1) {
+          if (respond(fp, root_path) == -1) {
             fprintf(stderr, "server error");
           }
           fclose(fp);
@@ -98,6 +153,11 @@ int
 main(int argc, char *argv[])
 {
   int port;
+
+  if (argc != 3) {
+    fprintf(stderr, "expected 3 arguments, but got %d\n", argc);
+    return 1;
+  }
 
   port = atoi(argv[1]);
 
