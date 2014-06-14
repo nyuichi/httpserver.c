@@ -25,8 +25,9 @@ rGET(FILE *fp, char *path)
 {
   char buf[2048];
   FILE *file;
+  size_t len, size;
 
-  printf("in rGET");
+  printf("in rGET"); fflush(stdout);
 
   getdate(buf, sizeof buf);
 
@@ -34,13 +35,19 @@ rGET(FILE *fp, char *path)
   fprintf(fp, "Date: %s\r\n", buf);
   fprintf(fp, "\r\n");
 
-  file = fopen(path, "r");
+  file = fopen(path, "rb");
 
-  fgets(buf, sizeof buf, file);
-  while (! (feof(file) || ferror(file))) {
-    fputs(buf, fp);
-    fgets(buf, sizeof buf, file);
-  }
+  do {
+    len = fread(buf, 1, sizeof buf, file);
+    if (ferror(file)) {
+      break;
+    }
+    size = 0;
+    while (size < len) {
+      size += fwrite(buf + size, 1, len - size, fp);
+    }
+  } while (! feof(file));
+  fflush(fp);
 
   fclose(file);
 }
